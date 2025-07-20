@@ -38,8 +38,8 @@
         @keyframes rise { 0% { transform: translateY(0) scale(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(-80vh) scale(0.5); opacity: 0; } }
     </style>
 </head>
-<body class="bg-black">
-    <div id="root"></div>
+<body class="bg-black flex items-center justify-center min-h-screen p-4">
+    <div id="root" class="w-full"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
@@ -104,7 +104,7 @@
                     </div>
                 ))}</div>)}</main>
                  <footer className="text-center p-4">
-                    <button onClick={() => onNavigate('/admin')} className="text-xs text-gray-600 hover:text-gray-400">Admin Panel</button>
+                    <button onClick={() => onNavigate('login')} className="text-xs text-gray-600 hover:text-gray-400">Admin Panel</button>
                 </footer>
               </div>
             </div>
@@ -112,13 +112,12 @@
         };
 
         const AdminDashboard = ({ menuData, onUpdate, onLogout }) => {
-          const [localMenuData, setLocalMenuData] = useState(menuData);
-          useEffect(() => { setLocalMenuData(menuData); }, [menuData]);
+          const [localMenuData, setLocalMenuData] = useState(JSON.parse(JSON.stringify(menuData)));
           const handleItemChange = (categoryId, itemId, field, value) => { const updatedData = JSON.parse(JSON.stringify(localMenuData)); const category = updatedData.categories.find(c => c.id === categoryId); const item = category.items.find(i => i.id === itemId); item[field] = value; setLocalMenuData(updatedData); };
           const handleImageUpload = (e, categoryId, itemId) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { handleItemChange(categoryId, itemId, 'imageUrl', reader.result); }; reader.readAsDataURL(file); } };
           const handleAddItem = (categoryId) => { const newItem = { id: `item-${Date.now()}`, name: "Nuevo Plato", description: "Descripción del nuevo plato.", price: 0.00, imageUrl: "https://placehold.co/600x400/cccccc/FFFFFF?text=Subir+Imagen" }; const updatedData = JSON.parse(JSON.stringify(localMenuData)); const category = updatedData.categories.find(c => c.id === categoryId); category.items.push(newItem); setLocalMenuData(updatedData); };
           const handleDeleteItem = (categoryId, itemId) => { const updatedData = JSON.parse(JSON.stringify(localMenuData)); const category = updatedData.categories.find(c => c.id === categoryId); category.items = category.items.filter(item => item.id !== itemId); setLocalMenuData(updatedData); };
-          const handleSaveChanges = () => { onUpdate(localMenuData); alert("¡Cambios guardados en la base de datos!"); };
+          const handleSaveChanges = () => { onUpdate(localMenuData); alert("¡Cambios guardados!"); };
           if (!localMenuData) { return <div className="text-white text-center p-10">Cargando datos...</div>; }
           return (
             <div className="w-full max-w-4xl mx-auto bg-gray-800 text-white rounded-2xl shadow-lg p-6 sm:p-8 font-sans">
@@ -139,12 +138,12 @@
                             <label htmlFor={`file-upload-${item.id}`} className="mt-2 inline-flex items-center justify-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-md cursor-pointer transition-colors"><UploadIcon /><span className="ml-2">Cambiar Imagen</span></label>
                           </div>
                           <div className="flex-grow">
-                            <input type="text" value={item.name} onChange={(e) => handleItemChange(category.id, item.id, 'name', e.target.value)} className="bg-transparent text-lg font-semibold w-full focus:bg-gray-600 rounded px-2 py-1 outline-none"/>
-                            <textarea value={item.description} onChange={(e) => handleItemChange(category.id, item.id, 'description', e.target.value)} className="bg-transparent text-sm text-gray-300 w-full focus:bg-gray-600 rounded px-2 py-1 outline-none mt-1 h-16 resize-none"/>
+                            <input type="text" defaultValue={item.name} onChange={(e) => handleItemChange(category.id, item.id, 'name', e.target.value)} className="bg-transparent text-lg font-semibold w-full focus:bg-gray-600 rounded px-2 py-1 outline-none"/>
+                            <textarea defaultValue={item.description} onChange={(e) => handleItemChange(category.id, item.id, 'description', e.target.value)} className="bg-transparent text-sm text-gray-300 w-full focus:bg-gray-600 rounded px-2 py-1 outline-none mt-1 h-16 resize-none"/>
                           </div>
                           <div className="flex items-center space-x-2 mt-4 sm:mt-0 sm:ml-4 self-center sm:self-auto">
                             <span className="text-lg text-gray-400">$</span>
-                            <input type="number" value={item.price} onChange={(e) => handleItemChange(category.id, item.id, 'price', parseFloat(e.target.value) || 0)} className="w-24 bg-gray-600 text-white font-bold text-lg p-2 rounded-md text-center outline-none focus:ring-2 focus:ring-orange-500" step="0.01"/>
+                            <input type="number" defaultValue={item.price.toFixed(2)} onChange={(e) => handleItemChange(category.id, item.id, 'price', parseFloat(e.target.value) || 0)} className="w-24 bg-gray-600 text-white font-bold text-lg p-2 rounded-md text-center outline-none focus:ring-2 focus:ring-orange-500" step="0.01"/>
                             <button onClick={() => handleDeleteItem(category.id, item.id)} className="p-2 bg-red-600 hover:bg-red-700 rounded-md transition-colors"><TrashIcon /></button>
                           </div>
                         </div>
@@ -179,24 +178,30 @@
             );
         }
 
-        // --- COMPONENTE PRINCIPAL DE LA APLICACIÓN ---
         function App() {
-            const [route, setRoute] = useState('/');
+            const [view, setView] = useState('customer'); // 'customer', 'login', 'admin'
             const [user, setUser] = useState(null);
             const [authError, setAuthError] = useState('');
             const [menuData, setMenuData] = useState(initialMenuData);
-            const onNavigate = (path) => { setRoute(path); };
-            const handleLogin = (email, password) => { if (email && password) { setUser({ email }); setAuthError(''); onNavigate('/admin'); } else { setAuthError('Por favor, ingrese correo y contraseña.'); } };
-            const handleRegister = (email, password) => { if (email && password) { setUser({ email }); setAuthError(''); onNavigate('/admin'); } else { setAuthError('Por favor, ingrese correo y contraseña para registrar.'); } };
-            const handleLogout = () => { setUser(null); onNavigate('/'); };
+            
+            const onNavigate = (path) => { setView(path); };
+            const handleLogin = (email, password) => { if (email && password) { setUser({ email }); setAuthError(''); onNavigate('admin'); } else { setAuthError('Por favor, ingrese correo y contraseña.'); } };
+            const handleRegister = (email, password) => { if (email && password) { setUser({ email }); setAuthError(''); onNavigate('admin'); } else { setAuthError('Por favor, ingrese correo y contraseña para registrar.'); } };
+            const handleLogout = () => { setUser(null); onNavigate('customer'); };
             const handleUpdateMenu = (newData) => { setMenuData(newData); };
-            if (route === '/admin') { if (user) { return <AdminDashboard menuData={menuData} onUpdate={handleUpdateMenu} onLogout={handleLogout} />; } else { return <LoginPage onLogin={handleLogin} onRegister={handleRegister} error={authError} />; } }
+
+            if (view === 'admin') {
+                if (user) { return <AdminDashboard menuData={menuData} onUpdate={handleUpdateMenu} onLogout={handleLogout} />; }
+                else { return <LoginPage onLogin={handleLogin} onRegister={handleRegister} error={authError} />; }
+            }
+            if (view === 'login') {
+                return <LoginPage onLogin={handleLogin} onRegister={handleRegister} error={authError} />;
+            }
             return <CustomerMenu menuData={menuData} onNavigate={onNavigate} />;
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-
     </script>
 </body>
 </html>
